@@ -1,5 +1,6 @@
 package ca.momoperes.gsredis.io;
 
+import ca.momoperes.gsredis.config.RedisPluginConfiguration;
 import net.glowstone.GlowWorld;
 import net.glowstone.io.*;
 import net.glowstone.io.data.WorldFunctionIoService;
@@ -15,6 +16,7 @@ public class RedisWorldStorageProvider implements WorldStorageProvider {
 
     private final String worldName;
     private final JedisPool redisPool;
+    private final RedisPluginConfiguration config;
     private GlowWorld world;
 
     private ChunkIoService chunkIoService;
@@ -25,9 +27,10 @@ public class RedisWorldStorageProvider implements WorldStorageProvider {
     private PlayerStatisticIoService playerStatisticIoService;
     private FunctionIoService functionIoService;
 
-    public RedisWorldStorageProvider(String worldName, JedisPool redisPool) {
+    public RedisWorldStorageProvider(String worldName, JedisPool redisPool, RedisPluginConfiguration config) {
         this.worldName = worldName;
         this.redisPool = redisPool;
+        this.config = config;
     }
 
     @Override
@@ -36,7 +39,7 @@ public class RedisWorldStorageProvider implements WorldStorageProvider {
             throw new IllegalArgumentException("World is already set.");
         }
         this.world = world;
-        chunkIoService = new RedisChunkIoService(worldName, redisPool);
+        chunkIoService = new RedisChunkIoService(worldName, redisPool, config.getChunkService());
         metadataService = new RedisMetadataService(world, redisPool);
         playerDataService = new NbtPlayerDataService(world.getServer(), new File(worldName + "_players"));
         structureDataService = new NbtStructureDataService(world, new File(worldName + "_structures"));

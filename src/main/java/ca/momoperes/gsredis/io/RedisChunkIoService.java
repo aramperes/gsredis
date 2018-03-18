@@ -1,5 +1,6 @@
 package ca.momoperes.gsredis.io;
 
+import ca.momoperes.gsredis.config.RedisChunkServiceConfiguration;
 import net.glowstone.chunk.ChunkSection;
 import net.glowstone.chunk.GlowChunk;
 import net.glowstone.chunk.GlowChunkSnapshot;
@@ -18,13 +19,15 @@ public class RedisChunkIoService implements ChunkIoService {
 
     private final String worldName;
     private final JedisPool redisPool;
+    private final RedisChunkServiceConfiguration config;
     private BinaryJedis redis;
 
-    public RedisChunkIoService(String worldName, JedisPool redisPool) {
+    public RedisChunkIoService(String worldName, JedisPool redisPool, RedisChunkServiceConfiguration config) {
         this.worldName = worldName;
         this.redisPool = redisPool;
+        this.config = config;
         // the chunk service is initialized in the main thread,
-        // the initRedis controller is initialized when it needs to be used first.
+        // the Jedis controller is initialized when it needs to be used in the world thread.
     }
 
     private void initRedis() {
@@ -83,6 +86,7 @@ public class RedisChunkIoService implements ChunkIoService {
     @Override
     public boolean read(GlowChunk chunk) throws IOException {
         initRedis();
+        redis.select(config.getDatabaseIndex());
         int x = chunk.getX();
         int z = chunk.getZ();
         String chunkKey = chunkKey(x, z);
@@ -155,7 +159,11 @@ public class RedisChunkIoService implements ChunkIoService {
 
     @Override
     public void write(GlowChunk chunk) throws IOException {
+        if (config.isReadOnly()) {
+            return;
+        }
         initRedis();
+        redis.select(config.getDatabaseIndex());
         int x = chunk.getX();
         int z = chunk.getZ();
         String chunkKey = chunkKey(x, z);
