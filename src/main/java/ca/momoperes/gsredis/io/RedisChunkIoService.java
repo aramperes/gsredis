@@ -5,7 +5,7 @@ import net.glowstone.chunk.GlowChunk;
 import net.glowstone.chunk.GlowChunkSnapshot;
 import net.glowstone.io.ChunkIoService;
 import net.glowstone.util.nbt.CompoundTag;
-import redis.clients.jedis.Jedis;
+import redis.clients.jedis.BinaryJedis;
 import redis.clients.jedis.JedisPool;
 
 import java.io.*;
@@ -13,13 +13,12 @@ import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 public class RedisChunkIoService implements ChunkIoService {
 
     private final String worldName;
     private final JedisPool redisPool;
-    private Jedis redis;
+    private BinaryJedis redis;
 
     public RedisChunkIoService(String worldName, JedisPool redisPool) {
         this.worldName = worldName;
@@ -38,8 +37,8 @@ public class RedisChunkIoService implements ChunkIoService {
         return "worlds:" + worldName + ":c:" + x + "_" + z;
     }
 
-    private String sectionListKey(String chunkKey) {
-        return chunkKey + ":sections";
+    private byte[] sectionListKey(String chunkKey) {
+        return (chunkKey + ":sections").getBytes();
     }
 
     private static boolean readSectionExists(DataInputStream stream) throws IOException {
@@ -87,15 +86,14 @@ public class RedisChunkIoService implements ChunkIoService {
         int x = chunk.getX();
         int z = chunk.getZ();
         String chunkKey = chunkKey(x, z);
-        String sectionSetKey = sectionListKey(chunkKey);
+        byte[] chunkKeyBytes = chunkKey.getBytes();
+        byte[] sectionSetKey = sectionListKey(chunkKey);
         if (!redis.exists(sectionSetKey)) {
             return false;
         }
 
         ChunkSection[] chunkSections = new ChunkSection[GlowChunk.SEC_COUNT];
-        List<byte[]> sections = redis.lrange(sectionSetKey, 0, 15)
-                .stream()
-                .map(String::getBytes).collect(Collectors.toList());
+        List<byte[]> sections = redis.lrange(sectionSetKey, 0, 15);
         for (int i = 0; i < chunkSections.length; i++) {
             byte[] bytes = sections.get(i);
             DataInputStream stream = new DataInputStream(new ByteArrayInputStream(bytes));
@@ -107,11 +105,11 @@ public class RedisChunkIoService implements ChunkIoService {
             }
 
             byte[] rawTypes = readByteArray(stream);
-            Optional<byte[]> extTypes = readOptionalByteArray(stream);
             byte[] data = readByteArray(stream);
 
             byte[] blockLight = readByteArray(stream);
             byte[] skyLight = readByteArray(stream);
+            Optional<byte[]> extTypes = readOptionalByteArray(stream);
 
             CompoundTag tag = new CompoundTag();
             tag.putByteArray("Blocks", rawTypes);
@@ -126,17 +124,17 @@ public class RedisChunkIoService implements ChunkIoService {
         }
 
         chunk.initializeSections(chunkSections);
-        boolean terrainPopulated = redis.hexists(chunkKey, "TerrainPopulated")
-                && redis.hget(chunkKey, "TerrainPopulated").equalsIgnoreCase("true");
+        boolean terrainPopulated = redis.hexists(chunkKeyBytes, "TerrainPopulated".getBytes())
+                && redis.hget(chunkKeyBytes, "TerrainPopulated".getBytes())[0] == 1;
         chunk.setPopulated(terrainPopulated);
 
-        if (redis.hexists(chunkKey, "Biomes")) {
-            byte[] biomes = redis.hget(chunkKey, "Biomes").getBytes();
+        if (redis.hexists(chunkKeyBytes, "Biomes".getBytes())) {
+            byte[] biomes = redis.hget(chunkKeyBytes, "Biomes".getBytes());
             chunk.setBiomes(biomes);
         }
 
-        if (redis.hexists(chunkKey, "HeightMap")) {
-            byte[] heightMapRaw = redis.hget(chunkKey, "HeightMap").getBytes();
+        if (redis.hexists(chunkKeyBytes, "HeightMap".getBytes())) {
+            byte[] heightMapRaw = redis.hget(chunkKeyBytes, "HeightMap".getBytes());
             int[] heightMap = new int[heightMapRaw.length / 4];
             ByteBuffer buffer = ByteBuffer.wrap(heightMapRaw);
             int index = 0;
@@ -161,10 +159,9 @@ public class RedisChunkIoService implements ChunkIoService {
         int x = chunk.getX();
         int z = chunk.getZ();
         String chunkKey = chunkKey(x, z);
-        String sectionSetKey = sectionListKey(chunkKey);
-        byte[] sectionSetKeyBytes = sectionSetKey.getBytes();
+        byte[] sectionSetKey = sectionListKey(chunkKey);
 
-        redis.hset(chunkKey, "TerrainPopulated", "true");
+        redis.hset(chunkKey.getBytes(), "TerrainPopulated".getBytes(), new byte[]{(byte) (chunk.isPopulated() ? 1 : 0)});
         GlowChunkSnapshot snapshot = chunk.getChunkSnapshot(true, true, false);
         ChunkSection[] sections = snapshot.getRawSections();
 
@@ -175,7 +172,7 @@ public class RedisChunkIoService implements ChunkIoService {
             boolean exists = writeSectionExists(sec, stream);
             if (!exists) {
                 // we're done here
-                redis.lpush(sectionSetKeyBytes, byteStream.toByteArray());
+                redis.lpush(sectionSetKey, byteStream.toByteArray());
                 continue;
             }
             sec.optimize();
@@ -184,20 +181,17 @@ public class RedisChunkIoService implements ChunkIoService {
 
             byte[] rawTypes = tag.getByteArray("Blocks");
             byte[] extTypes = tag.containsKey("Add") ? tag.getByteArray("Add") : null;
-            if (extTypes != null && extTypes.length == 0) {
-                extTypes = null;
-            }
             byte[] data = tag.getByteArray("Data");
             byte[] blockLight = tag.getByteArray("BlockLight");
             byte[] skyLight = tag.getByteArray("SkyLight");
 
             writeByteArray(rawTypes, stream);
-            writeOptionalByteArray(extTypes, stream);
             writeByteArray(data, stream);
             writeByteArray(blockLight, stream);
             writeByteArray(skyLight, stream);
+            writeOptionalByteArray(extTypes, stream);
 
-            redis.lpush(sectionSetKeyBytes, byteStream.toByteArray());
+            redis.lpush(sectionSetKey, byteStream.toByteArray());
             stream.close();
         }
         redis.ltrim(sectionSetKey, 0, 15);
