@@ -13,6 +13,13 @@
         <maven.compiler.target>1.8</maven.compiler.target>
     </properties>
 
+    <repositories>
+        <repository>
+            <id>glowstone-repo</id>
+            <url>https://repo.glowstone.net/content/repositories/snapshots/</url>
+        </repository>
+    </repositories>
+
     <dependencies>
         <dependency>
             <groupId>net.glowstone</groupId>
