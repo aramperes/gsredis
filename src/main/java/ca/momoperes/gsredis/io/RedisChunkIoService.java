@@ -129,7 +129,6 @@ public class RedisChunkIoService implements ChunkIoService {
         List<byte[]> sections = redis.lrange(sectionSetKey, 0, 15)
                 .stream()
                 .map(String::getBytes).collect(Collectors.toList());
-        Collections.reverse(sections);
         for (int i = 0; i < chunkSections.length; i++) {
             byte[] bytes = sections.get(i);
             DataInputStream stream = new DataInputStream(new ByteArrayInputStream(bytes));
