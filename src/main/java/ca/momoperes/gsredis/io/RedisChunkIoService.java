@@ -8,14 +8,12 @@ import net.glowstone.util.NibbleArray;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.BufferUnderflowException;
+import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class RedisChunkIoService implements ChunkIoService {
@@ -45,6 +43,77 @@ public class RedisChunkIoService implements ChunkIoService {
         return chunkKey + ":sections";
     }
 
+    private static boolean readSectionExists(DataInputStream stream) throws IOException {
+        boolean exists = stream.readBoolean();
+        return exists;
+    }
+
+    private static boolean writeSectionExists(ChunkSection section, DataOutputStream stream) throws IOException {
+        stream.writeBoolean(section != null);
+        return section != null;
+    }
+
+    private static byte[] readRawTypes(DataInputStream stream) throws IOException {
+        int arrayLength = stream.readInt();
+        byte[] rawTypes = new byte[arrayLength];
+        stream.read(rawTypes);
+        return rawTypes;
+    }
+
+    private static void writeRawTypes(byte[] rawTypes, DataOutputStream stream) throws IOException {
+        int length = rawTypes.length;
+        stream.writeInt(length);
+        stream.write(rawTypes);
+    }
+
+    private static Optional<NibbleArray> readExtTypes(DataInputStream stream) throws IOException {
+        boolean exists = stream.readBoolean();
+        if (!exists) {
+            return Optional.empty();
+        }
+        int length = stream.readInt();
+        byte[] extTypesRaw = new byte[length];
+        stream.read(extTypesRaw);
+        return Optional.of(new NibbleArray(extTypesRaw));
+    }
+
+    private static void writeExtTypes(NibbleArray extTypes, DataOutputStream stream) throws IOException {
+        boolean exists = extTypes != null;
+        stream.writeBoolean(exists);
+        if (!exists) {
+            return;
+        }
+        byte[] rawData = extTypes.getRawData();
+        stream.writeInt(rawData.length);
+        stream.write(rawData);
+    }
+
+    private static NibbleArray readData(DataInputStream stream) throws IOException {
+        int length = stream.readInt();
+        byte[] raw = new byte[length];
+        stream.read(raw);
+        return new NibbleArray(raw);
+    }
+
+    private static void writeData(NibbleArray data, DataOutputStream stream) throws IOException {
+        byte[] raw = data.getRawData();
+        stream.writeInt(raw.length);
+        stream.write(raw);
+    }
+
+    private static NibbleArray readNibble(DataInputStream stream) throws IOException {
+        int length = stream.readInt();
+        byte[] raw = new byte[length];
+        stream.read(raw);
+        return new NibbleArray(raw);
+    }
+
+    private static void writeNibble(NibbleArray nibble, DataOutputStream stream) throws IOException {
+        byte[] raw = nibble.getRawData();
+        stream.writeInt(raw.length);
+        stream.write(raw);
+    }
+
     @Override
     public boolean read(GlowChunk chunk) throws IOException {
         initRedis();
@@ -63,50 +132,25 @@ public class RedisChunkIoService implements ChunkIoService {
         Collections.reverse(sections);
         for (int i = 0; i < chunkSections.length; i++) {
             byte[] bytes = sections.get(i);
-            ByteBuffer buffer = ByteBuffer.wrap(bytes);
-            boolean exists = buffer.get() != 0;
+            DataInputStream stream = new DataInputStream(new ByteArrayInputStream(bytes));
+
+            boolean exists = readSectionExists(stream);
             if (!exists) {
                 chunkSections[i] = null;
                 continue;
             }
 
-            int blockLength = buffer.getInt();
-            byte[] rawTypes = new byte[blockLength];
-            buffer.get(rawTypes);
+            byte[] rawTypes = readRawTypes(stream);
+            Optional<NibbleArray> extTypes = readExtTypes(stream);
+            NibbleArray data = readData(stream);
 
-            NibbleArray extTypes = null;
-            boolean hasExtTypes = buffer.get() != 0;
-            if (hasExtTypes) {
-                int extTypesLength = buffer.getInt();
-                byte[] extTypesRaw = new byte[extTypesLength];
-                buffer.get(extTypesRaw);
-                extTypes = new NibbleArray(extTypesRaw);
-            }
-
-            NibbleArray data;
-            int dataLength = buffer.getInt();
-            try {
-                byte[] rawData = new byte[dataLength];
-                buffer.get(rawData);
-                data = new NibbleArray(rawData);
-            } catch (BufferUnderflowException ex) {
-                System.out.println("Buffer underflow: param=" + dataLength + ", actual=" + buffer.remaining());
-                return false;
-            }
-            int blockLightLength = buffer.getInt();
-            byte[] blockLightRaw = new byte[blockLightLength];
-            buffer.get(blockLightRaw);
-            NibbleArray blockLight = new NibbleArray(blockLightRaw);
-
-            int skyLightLength = buffer.getInt();
-            byte[] skyLightRaw = new byte[skyLightLength];
-            buffer.get(skyLightRaw);
-            NibbleArray skyLight = new NibbleArray(skyLightRaw);
+            NibbleArray blockLight = readNibble(stream);
+            NibbleArray skyLight = readNibble(stream);
 
             char[] types = new char[rawTypes.length];
             for (int j = 0; j < rawTypes.length; j++) {
-                types[j] = (char) (((extTypes == null || extTypes.size() == 0) ? 0 : extTypes
-                        .get(j)) << 12 | (rawTypes[j] & 0xff) << 4 | data.get(j));
+                types[j] = (char) (((!extTypes.isPresent() || extTypes.get().size() == 0) ? 0 : extTypes
+                        .get().get(j)) << 12 | (rawTypes[j] & 0xff) << 4 | data.get(j));
             }
 
             chunkSections[i] = new ChunkSection(types, skyLight, blockLight);
@@ -157,14 +201,15 @@ public class RedisChunkIoService implements ChunkIoService {
 
         for (int i = sections.length - 1; i >= 0; i--) {
             ChunkSection sec = sections[i];
-            if (sec == null) {
-                redis.lpush(sectionSetKeyBytes, new byte[1]); // byte will be 0; does not exist
+            ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+            DataOutputStream stream = new DataOutputStream(byteStream);
+            boolean exists = writeSectionExists(sec, stream);
+            if (!exists) {
+                // we're done here
+                redis.lpush(sectionSetKeyBytes, byteStream.toByteArray());
                 continue;
             }
             sec.optimize();
-            ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
-            DataOutputStream stream = new DataOutputStream(byteStream);
-            stream.writeByte(1); // exists
             char[] types = sec.getTypes();
             byte[] rawTypes = new byte[ChunkSection.ARRAY_SIZE];
             NibbleArray extTypes = null;
@@ -181,24 +226,15 @@ public class RedisChunkIoService implements ChunkIoService {
                 }
                 data.set(j, (byte) (type & 0xF));
             }
-            stream.writeInt(rawTypes.length);
-            stream.write(rawTypes);
 
-            if (extTypes != null) {
-                stream.write(1);
-                stream.writeInt(extTypes.byteSize());
-                stream.write(extTypes.getRawData());
-            } else {
-                stream.write(0);
-            }
-            stream.writeInt(data.byteSize());
-            stream.write(data.getRawData());
+            writeRawTypes(rawTypes, stream);
+            writeExtTypes(extTypes, stream);
+            writeData(data, stream);
+
             NibbleArray blockLight = sec.getBlockLight();
             NibbleArray skyLight = sec.getSkyLight();
-            stream.writeInt(blockLight.byteSize());
-            stream.write(blockLight.getRawData());
-            stream.writeInt(skyLight.byteSize());
-            stream.write(skyLight.getRawData());
+            writeNibble(blockLight, stream);
+            writeNibble(skyLight, stream);
 
             redis.lpush(sectionSetKeyBytes, byteStream.toByteArray());
             stream.close();
