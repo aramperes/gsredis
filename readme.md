@@ -33,10 +33,16 @@ server software, and uses the Bukkit/Spigot/Paper plugin API. It is a more effic
 but because it is a rewrite, there may be inconsistencies and missing features between it and Vanilla wrappers.
 
 Around the end of 2017, we introduced [an API](https://glowstone.net/jd/glowstone/net/glowstone/io/WorldStorageProvider.html) that lets plugins developed for Glowstone
-to use custom world storage solutions, while keeping the Anvil file format as the default.
+use custom world storage solutions, while keeping the Anvil file format as the default.
 *gsredis* uses that API to interface between the Redis client and Glowstone.
 
 ## Does it work?
 
-This project is currently work-in-progress and certain essential aspects of chunk storage are currently broken.
-Because of technical limitations, I do not plan to implement entity storage as part of this plugin.
+This project is currently work-in-progress and certain critical aspects may be broken.
+
+Block storage (a.k.a. Chunk Service I/O) is currently functional. Other types of data,
+such as structures, players, statistics, scoreboards, tile entities, and tile ticks are
+planned but unsupported.
+
+Entity storage (i.e. mobs and objects) is not implemented, and I cannot guarantee they will be
+supported by gsredis.
