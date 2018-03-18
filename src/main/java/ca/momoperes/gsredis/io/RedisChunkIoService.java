@@ -17,12 +17,14 @@ import java.util.Optional;
 
 public class RedisChunkIoService implements ChunkIoService {
 
+    private final String namespace;
     private final String worldName;
     private final JedisPool redisPool;
     private final RedisChunkServiceConfiguration config;
     private BinaryJedis redis;
 
-    public RedisChunkIoService(String worldName, JedisPool redisPool, RedisChunkServiceConfiguration config) {
+    public RedisChunkIoService(String namespace, String worldName, JedisPool redisPool, RedisChunkServiceConfiguration config) {
+        this.namespace = namespace;
         this.worldName = worldName;
         this.redisPool = redisPool;
         this.config = config;
@@ -37,7 +39,7 @@ public class RedisChunkIoService implements ChunkIoService {
     }
 
     private String chunkKey(int x, int z) {
-        return "worlds:" + worldName + ":c:" + x + "_" + z;
+        return namespace + ":worlds:" + worldName + ":c:" + x + "_" + z;
     }
 
     private byte[] sectionListKey(String chunkKey) {

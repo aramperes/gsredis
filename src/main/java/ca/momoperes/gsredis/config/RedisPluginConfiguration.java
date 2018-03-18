@@ -1,18 +1,28 @@
 package ca.momoperes.gsredis.config;
 
 public class RedisPluginConfiguration {
+    private String namespace;
     private String host;
     private int port;
     private int defaultDatabaseIndex;
     private String password;
     private RedisChunkServiceConfiguration chunkService;
 
-    public RedisPluginConfiguration(String host, int port, int defaultDatabaseIndex, String password, RedisChunkServiceConfiguration chunkService) {
+    public RedisPluginConfiguration(String namespace, String host, int port, int defaultDatabaseIndex, String password, RedisChunkServiceConfiguration chunkService) {
+        this.namespace = namespace;
         this.host = host;
         this.port = port;
         this.defaultDatabaseIndex = defaultDatabaseIndex;
         this.password = password;
         this.chunkService = chunkService;
+    }
+
+    public String getNamespace() {
+        return namespace;
+    }
+
+    public void setNamespace(String namespace) {
+        this.namespace = namespace;
     }
 
     public String getHost() {

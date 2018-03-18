@@ -1,8 +1,14 @@
+# The namespace of this server, in order to prevent
+# conflicts between world names on different servers.
+# If you are using redis as a common data source for multiple
+# servers, use a common namespace (e.g. 'common', 'network', etc.).
+# If not, use a unique namespace for this server.
+namespace: 'gsredis_server_X'
+
 # redis configuration
 host: 'localhost'
 port: 6379
 defaultDatabaseIndex: 0
-
 usePassword: false
 password: 'setUsePasswordToTrue'
 

@@ -39,8 +39,8 @@ public class RedisWorldStorageProvider implements WorldStorageProvider {
             throw new IllegalArgumentException("World is already set.");
         }
         this.world = world;
-        chunkIoService = new RedisChunkIoService(worldName, redisPool, config.getChunkService());
-        metadataService = new RedisMetadataService(world, redisPool);
+        chunkIoService = new RedisChunkIoService(config.getNamespace(), worldName, redisPool, config.getChunkService());
+        metadataService = new RedisMetadataService(config.getNamespace(), world, redisPool);
 
         // todo: redis-ify
         playerDataService = new NbtPlayerDataService(world.getServer(), new File(worldName + "_players"));

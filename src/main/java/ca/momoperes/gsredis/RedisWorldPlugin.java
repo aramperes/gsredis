@@ -9,6 +9,8 @@ import org.bukkit.plugin.java.JavaPlugin;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
 
+import java.io.File;
+
 public class RedisWorldPlugin extends JavaPlugin {
 
     private static JedisPool pool;
@@ -16,8 +18,17 @@ public class RedisWorldPlugin extends JavaPlugin {
 
     @Override
     public void onLoad() {
+        File configYaml = new File(getDataFolder(), "config.yml");
+        boolean firstTime = !configYaml.exists();
         saveDefaultConfig();
         config = readConfiguration(getConfig());
+
+        if (firstTime) {
+            getLogger().warning("It appears this is the first time you use gsredis.");
+            getLogger().warning("Redis world storage is not enabled on the first run.");
+            getLogger().warning("Please configure gsredis in plugins/gsredis/config.yml");
+            return;
+        }
 
         pool = new JedisPool(new JedisPoolConfig(),
                 config.getHost(), config.getPort(), 2000, config.getPassword(), config.getDefaultDatabaseIndex());
@@ -28,6 +39,7 @@ public class RedisWorldPlugin extends JavaPlugin {
     }
 
     private RedisPluginConfiguration readConfiguration(FileConfiguration config) {
+        String namespace = config.getString("namespace", "gsredis_server_X");
         String host = config.getString("host", "localhost");
         int port = config.getInt("port", 6379);
         int defaultDatabaseIndex = config.getInt("defaultDatabaseIndex", 0);
@@ -42,7 +54,7 @@ public class RedisWorldPlugin extends JavaPlugin {
         RedisChunkServiceConfiguration chunkServiceConfig = new RedisChunkServiceConfiguration(chunkServiceDatabaseIndex, chunkServiceReadOnly);
 
         return new RedisPluginConfiguration(
-                host,
+                namespace, host,
                 port,
                 defaultDatabaseIndex,
                 password,

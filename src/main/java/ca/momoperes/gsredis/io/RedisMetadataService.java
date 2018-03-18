@@ -11,16 +11,18 @@ import java.util.Map;
 import java.util.UUID;
 
 public class RedisMetadataService implements WorldMetadataService {
+    private final String namespace;
     private final GlowWorld world;
     private final JedisPool redisPool;
     private Jedis redis;
 
     private final String worldKey;
 
-    public RedisMetadataService(GlowWorld world, JedisPool redisPool) {
+    public RedisMetadataService(String namespace, GlowWorld world, JedisPool redisPool) {
+        this.namespace = namespace;
         this.world = world;
         this.redisPool = redisPool;
-        this.worldKey = "worlds:" + world.getName() + ":meta";
+        this.worldKey = namespace + ":worlds:" + world.getName() + ":meta";
         // the chunk service is initialized in the main thread,
         // the initRedis controller is initialized when it needs to be used first.
     }
