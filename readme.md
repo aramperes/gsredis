@@ -41,8 +41,11 @@ use custom world storage solutions, while keeping the Anvil file format as the d
 This project is currently work-in-progress and certain critical aspects may be broken.
 
 Block storage (a.k.a. Chunk Service I/O) is currently functional. Other types of data,
-such as structures, players, statistics, scoreboards, tile entities, and tile ticks are
+such as structures, statistics, scoreboards, tile entities, and tile ticks are
 planned but unsupported.
 
-Entity storage (i.e. mobs and objects) is not implemented, and I cannot guarantee they will be
+Entity storage (i.e. mobs and objects, except players) is not implemented, and I cannot guarantee they will be
 supported by gsredis.
+
+Player data storage is limited to a few properties such as position, username, and first-played-time/last-played-time.
+Other properties such as health, inventory, and XP are not saved.
