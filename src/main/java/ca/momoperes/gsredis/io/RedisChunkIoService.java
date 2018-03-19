@@ -39,7 +39,7 @@ public class RedisChunkIoService implements ChunkIoService {
     }
 
     private String chunkKey(int x, int z) {
-        return namespace + ":worlds:" + worldName + ":c:" + x + "_" + z;
+        return namespace + ":worlds:" + worldName + ":chunks:" + x + "_" + z;
     }
 
     private byte[] sectionListKey(String chunkKey) {

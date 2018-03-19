@@ -1,6 +1,7 @@
 package ca.momoperes.gsredis;
 
 import ca.momoperes.gsredis.config.RedisChunkServiceConfiguration;
+import ca.momoperes.gsredis.config.RedisPlayerDataServiceConfiguration;
 import ca.momoperes.gsredis.config.RedisPluginConfiguration;
 import ca.momoperes.gsredis.io.RedisWorldStorageProvider;
 import net.glowstone.GlowServer;
@@ -39,6 +40,7 @@ public class RedisWorldPlugin extends JavaPlugin {
     }
 
     private RedisPluginConfiguration readConfiguration(FileConfiguration config) {
+        // basic config
         String namespace = config.getString("namespace", "gsredis_server_X");
         String host = config.getString("host", "localhost");
         int port = config.getInt("port", 6379);
@@ -53,12 +55,19 @@ public class RedisWorldPlugin extends JavaPlugin {
         boolean chunkServiceReadOnly = config.getBoolean("chunkService.readOnly", false);
         RedisChunkServiceConfiguration chunkServiceConfig = new RedisChunkServiceConfiguration(chunkServiceDatabaseIndex, chunkServiceReadOnly);
 
+        // player data service
+        int playerDataServiceDatabaseIndex = config.getInt("playerDataService.databaseIndex", defaultDatabaseIndex);
+        boolean playerDataServiceReadOnly = config.getBoolean("playerDataService.readOnly", false);
+        RedisPlayerDataServiceConfiguration playerDataConfiguration = new RedisPlayerDataServiceConfiguration(playerDataServiceDatabaseIndex, playerDataServiceReadOnly);
+
         return new RedisPluginConfiguration(
-                namespace, host,
+                namespace,
+                host,
                 port,
                 defaultDatabaseIndex,
                 password,
-                chunkServiceConfig
+                chunkServiceConfig,
+                playerDataConfiguration
         );
     }
 

@@ -16,3 +16,8 @@ password: 'setUsePasswordToTrue'
 chunkService:
   databaseIndex: 0
   readOnly: false
+
+# player data configuration
+playerDataService:
+  databaseIndex: 0
+  readOnly: false

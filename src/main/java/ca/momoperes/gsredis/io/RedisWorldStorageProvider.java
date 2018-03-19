@@ -5,7 +5,6 @@ import net.glowstone.GlowWorld;
 import net.glowstone.io.*;
 import net.glowstone.io.data.WorldFunctionIoService;
 import net.glowstone.io.json.JsonPlayerStatisticIoService;
-import net.glowstone.io.nbt.NbtPlayerDataService;
 import net.glowstone.io.nbt.NbtScoreboardIoService;
 import net.glowstone.io.nbt.NbtStructureDataService;
 import redis.clients.jedis.JedisPool;
@@ -41,9 +40,9 @@ public class RedisWorldStorageProvider implements WorldStorageProvider {
         this.world = world;
         chunkIoService = new RedisChunkIoService(config.getNamespace(), worldName, redisPool, config.getChunkService());
         metadataService = new RedisMetadataService(config.getNamespace(), world, redisPool);
+        playerDataService = new RedisPlayerDataService(config.getNamespace(), world, redisPool, config.getPlayerData());
 
         // todo: redis-ify
-        playerDataService = new NbtPlayerDataService(world.getServer(), new File(worldName + "_players"));
         structureDataService = new NbtStructureDataService(world, new File(worldName + "_structures"));
         scoreboardIoService = new NbtScoreboardIoService(world.getServer(), new File(worldName + "_score"));
         playerStatisticIoService = new JsonPlayerStatisticIoService(world.getServer(), new File(worldName + "_stats"));

@@ -23,18 +23,12 @@ public class RedisMetadataService implements WorldMetadataService {
         this.world = world;
         this.redisPool = redisPool;
         this.worldKey = namespace + ":worlds:" + world.getName() + ":meta";
-        // the chunk service is initialized in the main thread,
-        // the initRedis controller is initialized when it needs to be used first.
     }
 
     private void initRedis() {
         if (this.redis == null) {
             redis = redisPool.getResource();
         }
-    }
-
-    private String worldKey() {
-        return worldKey;
     }
 
     @Override

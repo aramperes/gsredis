@@ -7,14 +7,17 @@ public class RedisPluginConfiguration {
     private int defaultDatabaseIndex;
     private String password;
     private RedisChunkServiceConfiguration chunkService;
+    private RedisPlayerDataServiceConfiguration playerData;
 
-    public RedisPluginConfiguration(String namespace, String host, int port, int defaultDatabaseIndex, String password, RedisChunkServiceConfiguration chunkService) {
+    public RedisPluginConfiguration(String namespace, String host, int port, int defaultDatabaseIndex, String password,
+                                    RedisChunkServiceConfiguration chunkService, RedisPlayerDataServiceConfiguration playerData) {
         this.namespace = namespace;
         this.host = host;
         this.port = port;
         this.defaultDatabaseIndex = defaultDatabaseIndex;
         this.password = password;
         this.chunkService = chunkService;
+        this.playerData = playerData;
     }
 
     public String getNamespace() {
@@ -63,5 +66,13 @@ public class RedisPluginConfiguration {
 
     public void setChunkService(RedisChunkServiceConfiguration chunkService) {
         this.chunkService = chunkService;
+    }
+
+    public RedisPlayerDataServiceConfiguration getPlayerData() {
+        return playerData;
+    }
+
+    public void setPlayerData(RedisPlayerDataServiceConfiguration playerData) {
+        this.playerData = playerData;
     }
 }
