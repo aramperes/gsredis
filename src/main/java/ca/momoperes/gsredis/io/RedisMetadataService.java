@@ -1,5 +1,6 @@
 package ca.momoperes.gsredis.io;
 
+import ca.momoperes.gsredis.config.RedisChunkServiceConfiguration;
 import net.glowstone.GlowWorld;
 import net.glowstone.io.WorldMetadataService;
 import redis.clients.jedis.Jedis;
@@ -14,14 +15,16 @@ public class RedisMetadataService implements WorldMetadataService {
     private final String namespace;
     private final GlowWorld world;
     private final JedisPool redisPool;
+    private final RedisChunkServiceConfiguration config;
     private Jedis redis;
 
     private final String worldKey;
 
-    public RedisMetadataService(String namespace, GlowWorld world, JedisPool redisPool) {
+    public RedisMetadataService(String namespace, GlowWorld world, JedisPool redisPool, RedisChunkServiceConfiguration config) {
         this.namespace = namespace;
         this.world = world;
         this.redisPool = redisPool;
+        this.config = config;
         this.worldKey = namespace + ":worlds:" + world.getName() + ":meta";
     }
 
@@ -29,6 +32,7 @@ public class RedisMetadataService implements WorldMetadataService {
         if (this.redis == null) {
             redis = redisPool.getResource();
         }
+        redis.select(config.getDatabaseIndex());
     }
 
     @Override
@@ -59,6 +63,9 @@ public class RedisMetadataService implements WorldMetadataService {
 
     @Override
     public void writeWorldData() throws IOException {
+        if (config.isReadOnly()) {
+            return;
+        }
         initRedis();
         Map<String, String> fields = new HashMap<>();
         fields.put("uid", world.getUID().toString());

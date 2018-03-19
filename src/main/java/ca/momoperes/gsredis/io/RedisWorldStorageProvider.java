@@ -39,7 +39,7 @@ public class RedisWorldStorageProvider implements WorldStorageProvider {
         }
         this.world = world;
         chunkIoService = new RedisChunkIoService(config.getNamespace(), worldName, redisPool, config.getChunkService());
-        metadataService = new RedisMetadataService(config.getNamespace(), world, redisPool);
+        metadataService = new RedisMetadataService(config.getNamespace(), world, redisPool, config.getChunkService());
         playerDataService = new RedisPlayerDataService(config.getNamespace(), world, redisPool, config.getPlayerData());
 
         // todo: redis-ify

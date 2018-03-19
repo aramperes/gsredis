@@ -36,6 +36,7 @@ public class RedisChunkIoService implements ChunkIoService {
         if (this.redis == null) {
             redis = redisPool.getResource();
         }
+        redis.select(config.getDatabaseIndex());
     }
 
     private String chunkKey(int x, int z) {
@@ -88,7 +89,6 @@ public class RedisChunkIoService implements ChunkIoService {
     @Override
     public boolean read(GlowChunk chunk) throws IOException {
         initRedis();
-        redis.select(config.getDatabaseIndex());
         int x = chunk.getX();
         int z = chunk.getZ();
         String chunkKey = chunkKey(x, z);
@@ -152,7 +152,6 @@ public class RedisChunkIoService implements ChunkIoService {
             chunk.automaticHeightMap();
         }
 
-        // todo: entities
         // todo: block entities
         // todo: tile ticks
 
@@ -165,7 +164,6 @@ public class RedisChunkIoService implements ChunkIoService {
             return;
         }
         initRedis();
-        redis.select(config.getDatabaseIndex());
         int x = chunk.getX();
         int z = chunk.getZ();
         String chunkKey = chunkKey(x, z);
@@ -213,7 +211,6 @@ public class RedisChunkIoService implements ChunkIoService {
         intBuffer.put(rawHeightmap);
         redis.hset(chunkKey.getBytes(), "HeightMap".getBytes(), byteBuffer.array());
 
-        // todo: entities
         // todo: block entities
         // todo: tile ticks
     }
